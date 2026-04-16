@@ -1029,7 +1029,7 @@ func TestProcessInteractiveEvents_AppendsReplyFooterWhenEnabled(t *testing.T) {
 	e.interactiveStates[sessionKey] = state
 
 	agentSession.events <- Event{Type: EventResult, Content: "answer", Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer", time.Now(), nil, nil, state.replyCtx, retryContext{})
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1077,7 +1077,7 @@ func TestProcessInteractiveEvents_DoesNotAppendReplyFooterWhenDisabled(t *testin
 	e.interactiveStates[sessionKey] = state
 
 	agentSession.events <- Event{Type: EventResult, Content: "answer", Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-off", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-off", time.Now(), nil, nil, state.replyCtx, retryContext{})
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1144,7 +1144,7 @@ func TestProcessInteractiveEvents_ReplyFooterPrefersSessionRuntimeState(t *testi
 	e.interactiveStates[sessionKey] = state
 
 	agentSession.events <- Event{Type: EventResult, Content: "answer", Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-runtime", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-runtime", time.Now(), nil, nil, state.replyCtx, retryContext{})
 
 	sent := p.getSent()
 	if len(sent) != 1 {
