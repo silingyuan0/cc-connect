@@ -9725,6 +9725,7 @@ func TestIsRetryableError(t *testing.T) {
 		{"internal server error", fmt.Errorf("internal server error occurred"), true},
 		{"service unavailable", fmt.Errorf("service unavailable"), true},
 		{"please try again", fmt.Errorf("please try again later"), true},
+		{"Chinese 网络错误 with 请稍后重试", fmt.Errorf(`API Error: 400 {"type":"error","error":{"message":"网络错误，错误id：20260417090927aaf2f9f3cdc34057，请稍后重试","code":"1234"},"request_id":"20260417090927aaf2f9f3cdc34057"}`), true},
 		{"case insensitive 429", fmt.Errorf("ERROR 429 RATE LIMITED"), true},
 		{"case insensitive rate limit", fmt.Errorf("RATE LIMIT EXCEEDED"), true},
 		{"invalid API key", fmt.Errorf("invalid API key"), false},

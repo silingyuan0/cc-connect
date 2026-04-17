@@ -7247,6 +7247,7 @@ func isRetryableError(err error) bool {
 	}
 	for _, substr := range []string{
 		"429",
+		"400",
 		"rate limit",
 		"rate_limit",
 		"too many requests",
@@ -7260,6 +7261,7 @@ func isRetryableError(err error) bool {
 		"internal server error",
 		"service unavailable",
 		"please try again",
+		"请稍后重试",
 	} {
 		if strings.Contains(msg, substr) {
 			return true
