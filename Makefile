@@ -33,7 +33,7 @@ PLATFORMS := \
 #   make build EXCLUDE=discord,dingtalk,qq,qqbot,line
 # ---------------------------------------------------------------------------
 
-ALL_AGENTS    := acp claudecode codex cursor gemini iflow kimi opencode pi qoder
+ALL_AGENTS    := acp claudecode claudecodesdk codex cursor gemini iflow kimi opencode pi qoder
 ALL_PLATFORMS := feishu telegram discord slack dingtalk wecom weixin qq qqbot line weibo
 ALL_EXTRAS    := web
 
@@ -71,10 +71,17 @@ web:
 	@if [ ! -d web/node_modules ]; then cd web && npm install; fi
 	cd web && npm run build
 
-build: web
+build: web sidecar-bundle
 	go build $(_TAGS_FLAG) -ldflags "$(LDFLAGS)" -o $(APP) $(CMD)
 
-build-noweb:
+sidecar-bundle:
+	@if [ ! -f sidecar/sidecar.bundle.mjs ] || [ sidecar/sidecar.mjs -nt sidecar/sidecar.bundle.mjs ]; then \
+		echo "bundling sidecar..."; \
+		cd sidecar && npx esbuild sidecar.mjs --bundle --platform=node --format=esm --outfile=sidecar.bundle.mjs; \
+		cp sidecar.bundle.mjs ../agent/claudecodesdk/sidecar.bundle.mjs; \
+	fi
+
+build-noweb: sidecar-bundle
 	go build $(_TAGS_FLAG) -tags 'no_web' -ldflags "$(LDFLAGS)" -o $(APP) $(CMD)
 
 run: build
@@ -83,6 +90,7 @@ run: build
 clean:
 	rm -f $(APP)
 	rm -rf $(DIST)
+	rm -f sidecar/sidecar.bundle.mjs agent/claudecodesdk/sidecar.bundle.mjs
 
 # ---------------------------------------------------------------------------
 # Testing targets.

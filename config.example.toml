@@ -1174,6 +1174,78 @@ app_secret = "your-feishu-app-secret"
 # env = { GOOGLE_API_KEY = "your-key", GOOGLE_GENAI_USE_VERTEXAI = "true" }
 #
 # [[projects.platforms]]
+
+## Claude Code SDK Agent — uses @anthropic-ai/claude-agent-sdk via Node.js sidecar
+## Requires: Node.js 18+, claude CLI installed / 需要 Node.js 18+ 和 claude CLI
+## No npm install needed — sidecar is embedded in the binary.
+## 无需 npm install — sidecar 已内嵌到二进制中。
+##
+## [[projects]]
+## name = "my-sdk-project"
+##
+## [projects.agent]
+## type = "claudecodesdk"
+##
+## [projects.agent.options]
+## work_dir = "/path/to/project"
+## model = "sonnet"                        # optional: sonnet (default), opus, haiku
+## mode = "default"                        # optional: see below / 可选：见下方说明
+## # node_path = "/usr/bin/node"            # optional: auto-detected from PATH / 可选：自动检测
+## # claude_path = "/usr/local/bin/claude"  # optional: auto-detected from PATH / 可选：自动检测
+##
+## # Mode options / 模式说明:
+## # - "default":              Every tool call requires user approval. / 每次工具调用都需用户确认。
+## #                           In IM, reply "允许"/"allow" to grant permission.
+## #                           在 IM 中可回复"允许"或"allow"来授权。
+## # - "acceptEdits" (edit):   File edit tools auto-approved; others still ask. / 文件编辑自动通过，其他仍需确认。
+## # - "plan":                 Claude only plans — no execution until you approve. / 只做规划不执行。
+## # - "auto":                 Claude automatically decides when permission is needed. / Claude 自动判断是否需要确认。
+## # - "bypassPermissions" (yolo): All tool calls auto-approved. Use with caution. / 全部自动通过，请谨慎使用。
+## # - "dontAsk" (dont-ask):   Auto-deny tools unless pre-approved via allowed_tools or settings. / 未预授权的工具自动拒绝。
+##
+## # Reasoning / 系统推理
+## # effort = "high"                         # optional: low, medium, high, xhigh, max
+## # thinking = { type = "adaptive" }        # optional: adaptive (default), enabled, disabled
+##
+## # Tools / 工具
+## # allowed_tools = ["Bash", "Read", "Write"]  # optional: restrict available tools
+## # disallowed_tools = ["Bash"]               # optional: block specific tools
+##
+## # Limits / 限制
+## # max_turns = 50                         # optional: limit agentic turns
+## # max_budget_usd = 5.0                   # optional: max spend per query in USD
+##
+## # Model / 模型
+## # fallback_model = "haiku"               # optional: fallback model if primary fails
+##
+## # Session / 会话
+## # continue = true                        # optional: continue most recent conversation instead of starting new
+## #                                          可选：继续最近一次对话，而非新建
+##
+## # System prompt / 系统提示词
+## # append_system_prompt = "Always use Chinese"  # optional: appended to Claude Code system prompt
+## # custom_system_prompt = "..."           # optional: completely override system prompt
+##
+## # Settings / 设置
+## # settings_path = "/path/to/settings.json" # optional: Claude settings file (hooks, permissions, etc.)
+## # setting_sources = ["user", "project"]    # optional: which setting layers to load
+##
+## # MCP servers / MCP 服务器
+## # [projects.agent.options.mcp_servers]
+## #   my-server = { command = "npx", args = ["-y", "my-mcp-server"] }
+##
+## # Agent system / 子代理
+## # agent = "code-reviewer"                 # optional: named agent to use
+## # [projects.agent.options.agents]         # optional: define custom subagents
+## #   code-reviewer = { description = "Reviews code", prompt = "You review code..." }
+##
+## # Plugins / 插件
+## # plugins = [{ type = "local", path = "./my-plugin" }]  # optional: load plugins
+##
+## # Sandbox / 沙箱
+## # sandbox = { enabled = true, autoAllowBashIfSandboxed = true }  # optional: sandbox settings
+##
+## [[projects.platforms]]
 # type = "feishu"
 #
 # [projects.platforms.options]
