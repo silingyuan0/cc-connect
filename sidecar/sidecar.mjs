@@ -309,7 +309,8 @@ async function main() {
     // Tools
     allowedTools: config.allowedTools || undefined,
     disallowedTools: config.disallowedTools || undefined,
-    tools: config.tools || undefined,
+    // tools (DISABLED: cc-connect 需要完整工具能力)
+    // tools: config.tools || undefined,
 
     // MCP
     mcpServers: config.mcpServers || undefined,
@@ -324,24 +325,24 @@ async function main() {
     maxBudgetUsd: config.maxBudgetUsd || undefined,
     fallbackModel: config.fallbackModel || undefined,
 
-    // Agent system
-    agent: config.agent || undefined,
-    agents: config.agents || undefined,
+    // Agent system (DISABLED: cc-connect 不需要自定义子代理)
+    // agent: config.agent || undefined,
+    // agents: config.agents || undefined,
 
-    // Plugins
-    plugins: config.plugins || undefined,
+    // Plugins (DISABLED: 无插件生态使用)
+    // plugins: config.plugins || undefined,
 
-    // Sandbox
-    sandbox: config.sandbox || undefined,
+    // Sandbox (DISABLED: 容器/VM 环境下冗余)
+    // sandbox: config.sandbox || undefined,
 
-    // Other
-    enableFileCheckpointing: config.enableFileCheckpointing || undefined,
-    includeHookEvents: config.includeHookEvents || undefined,
-    debug: config.debug || undefined,
-    debugFile: config.debugFile || undefined,
+    // Other (DISABLED: 小众/桌面端特性)
+    // enableFileCheckpointing: config.enableFileCheckpointing || undefined,
+    // includeHookEvents: config.includeHookEvents || undefined,
+    // debug: config.debug || undefined,
+    // debugFile: config.debugFile || undefined,
 
-    // Session
-    continue: config.continue || undefined,
+    // Session (DISABLED: cc-connect 通过 session ID 自行管理恢复)
+    // continue: config.continue || undefined,
 
     // Permission callback
     canUseTool: async (toolName, input, options) => {
@@ -362,16 +363,16 @@ async function main() {
     thinking: queryOptions.thinking ? 'configured' : 'default',
     allowedTools: queryOptions.allowedTools?.length || 0,
     disallowedTools: queryOptions.disallowedTools?.length || 0,
-    tools: queryOptions.tools ? 'configured' : 'default',
+    // tools: queryOptions.tools ? 'configured' : 'default',  // DISABLED
     mcpServers: queryOptions.mcpServers ? Object.keys(queryOptions.mcpServers).length : 0,
     settings: queryOptions.settings || 'none',
     settingSources: queryOptions.settingSources || 'none',
     maxTurns: queryOptions.maxTurns || 'unlimited',
     maxBudgetUsd: queryOptions.maxBudgetUsd || 'unlimited',
-    agent: queryOptions.agent || 'none',
-    agents: queryOptions.agents ? Object.keys(queryOptions.agents).length : 0,
-    plugins: queryOptions.plugins?.length || 0,
-    sandbox: queryOptions.sandbox ? 'configured' : 'none',
+    // agent: queryOptions.agent || 'none',            // DISABLED
+    // agents: queryOptions.agents ? Object.keys(queryOptions.agents).length : 0,  // DISABLED
+    // plugins: queryOptions.plugins?.length || 0,     // DISABLED
+    // sandbox: queryOptions.sandbox ? 'configured' : 'none',  // DISABLED
   }))
 
   // Start query with multi-turn support

@@ -88,9 +88,10 @@ func New(opts map[string]any) (core.Agent, error) {
 	}
 	config.AppendSystemPrompt = sysPrompt
 
-	if v, ok := opts["custom_system_prompt"].(string); ok {
-		config.CustomSystemPrompt = v
-	}
+	// custom_system_prompt (DISABLED: 会完全覆盖 cc-connect 系统提示，导致 cron/relay 指令丢失)
+	// if v, ok := opts["custom_system_prompt"].(string); ok {
+	// 	config.CustomSystemPrompt = v
+	// }
 
 	// ── Reasoning / effort ─────────────────────────────────
 	if v, ok := opts["effort"].(string); ok {
@@ -100,10 +101,10 @@ func New(opts map[string]any) (core.Agent, error) {
 		config.Thinking = v
 	}
 
-	// ── Tools ──────────────────────────────────────────────
-	if v, ok := opts["tools"]; ok {
-		config.Tools = v
-	}
+	// ── Tools (DISABLED: 显式工具集限制无意义，cc-connect 需要完整工具能力) ──
+	// if v, ok := opts["tools"]; ok {
+	// 	config.Tools = v
+	// }
 
 	// ── Settings ───────────────────────────────────────────
 	if v, ok := opts["settings_path"].(string); ok {
@@ -150,45 +151,45 @@ func New(opts map[string]any) (core.Agent, error) {
 		config.MaxBudgetUsd = float64(v)
 	}
 
-	// ── Agent system ───────────────────────────────────────
-	if v, ok := opts["agent"].(string); ok {
-		config.Agent = v
-	}
-	if v, ok := opts["agents"].(map[string]any); ok {
-		config.Agents = v
-	}
+	// ── Agent system (DISABLED: cc-connect 不需要自定义子代理) ──
+	// if v, ok := opts["agent"].(string); ok {
+	// 	config.Agent = v
+	// }
+	// if v, ok := opts["agents"].(map[string]any); ok {
+	// 	config.Agents = v
+	// }
 
-	// ── Plugins ────────────────────────────────────────────
-	if v, ok := opts["plugins"].([]any); ok {
-		config.Plugins = v
-	}
+	// ── Plugins (DISABLED: 无插件生态使用) ─────────────────────
+	// if v, ok := opts["plugins"].([]any); ok {
+	// 	config.Plugins = v
+	// }
 
-	// ── Sandbox ────────────────────────────────────────────
-	if v, ok := opts["sandbox"].(map[string]any); ok {
-		config.Sandbox = v
-	}
+	// ── Sandbox (DISABLED: 容器/VM 环境下冗余) ────────────────
+	// if v, ok := opts["sandbox"].(map[string]any); ok {
+	// 	config.Sandbox = v
+	// }
 
-	// ── Other ──────────────────────────────────────────────
-	if v, ok := opts["strict_mcp_config"].(bool); ok {
-		config.StrictMCPConfig = v
-	}
-	if v, ok := opts["include_hook_events"].(bool); ok {
-		config.IncludeHookEvents = v
-	}
-	if v, ok := opts["enable_file_checkpointing"].(bool); ok {
-		config.EnableFileCheckpoint = v
-	}
-	if v, ok := opts["debug"].(bool); ok {
-		config.Debug = v
-	}
-	if v, ok := opts["debug_file"].(string); ok {
-		config.DebugFile = v
-	}
+	// ── Other (DISABLED: 小众/桌面端特性) ────────────────────
+	// if v, ok := opts["strict_mcp_config"].(bool); ok {
+	// 	config.StrictMCPConfig = v
+	// }
+	// if v, ok := opts["include_hook_events"].(bool); ok {
+	// 	config.IncludeHookEvents = v
+	// }
+	// if v, ok := opts["enable_file_checkpointing"].(bool); ok {
+	// 	config.EnableFileCheckpoint = v
+	// }
+	// if v, ok := opts["debug"].(bool); ok {
+	// 	config.Debug = v
+	// }
+	// if v, ok := opts["debug_file"].(string); ok {
+	// 	config.DebugFile = v
+	// }
 
-	// ── Session ────────────────────────────────────────────
-	if v, ok := opts["continue"].(bool); ok {
-		config.Continue = v
-	}
+	// ── Session (DISABLED: cc-connect 通过 session ID 自行管理恢复) ──
+	// if v, ok := opts["continue"].(bool); ok {
+	// 	config.Continue = v
+	// }
 
 	return &Agent{
 		workDir:      workDir,
@@ -300,6 +301,44 @@ func (a *Agent) PermissionModes() []core.PermissionModeInfo {
 // HasSystemPromptSupport implements core.SystemPromptSupporter.
 func (a *Agent) HasSystemPromptSupport() bool { return true }
 
+// providerEnvLocked returns env vars for the active provider. Caller must hold mu.
+//
+// When a custom base_url is configured, we use ANTHROPIC_AUTH_TOKEN (Bearer)
+// instead of ANTHROPIC_API_KEY (x-api-key). Claude Code validates API keys
+// against api.anthropic.com which hangs for third-party endpoints; Bearer auth
+// skips that check.
+func (a *Agent) providerEnvLocked() []string {
+	if a.activeIdx < 0 || a.activeIdx >= len(a.providers) {
+		return nil
+	}
+	p := a.providers[a.activeIdx]
+	var env []string
+
+	if p.BaseURL != "" {
+		env = append(env, "ANTHROPIC_BASE_URL="+p.BaseURL)
+		if p.APIKey != "" {
+			env = append(env, "ANTHROPIC_AUTH_TOKEN="+p.APIKey)
+			env = append(env, "ANTHROPIC_API_KEY=")
+		}
+		if p.Model != "" {
+			env = append(env, "ANTHROPIC_MODEL="+p.Model)
+		}
+	} else {
+		if p.APIKey != "" {
+			env = append(env, "ANTHROPIC_API_KEY="+p.APIKey)
+		}
+	}
+
+	for k, v := range p.Env {
+		env = append(env, k+"="+v)
+	}
+	slog.Debug("claudecodesdk: providerEnv",
+		"provider", p.Name,
+		"model", p.Model,
+		"env", core.RedactEnv(env))
+	return env
+}
+
 // StartSession creates a new sidecar process for an interactive session.
 func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentSession, error) {
 	a.mu.RLock()
@@ -311,6 +350,7 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	sessionEnv := a.sessionEnv
 	agentEnv := a.agentEnv
 	config := a.config
+	providerEnv := a.providerEnvLocked()
 	a.mu.RUnlock()
 
 	// Resolve sidecar path: embedded > sidecar_dir > binary-relative
@@ -319,7 +359,13 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 		return nil, err
 	}
 
+	// Provider model override: if active provider has a model, prefer it.
+	if activeProv := a.GetActiveProvider(); activeProv != nil && activeProv.Model != "" {
+		model = activeProv.Model
+	}
+
 	var extraEnv []string
+	extraEnv = append(extraEnv, providerEnv...)
 	extraEnv = append(extraEnv, sessionEnv...)
 	extraEnv = append(extraEnv, agentEnv...)
 

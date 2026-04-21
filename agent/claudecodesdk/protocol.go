@@ -67,7 +67,8 @@ type sidecarUsage struct {
 // Fields map directly to SDK Options as documented in sdk.d.ts.
 type sidecarConfig struct {
 	// ── System prompt ──────────────────────────────────────
-	CustomSystemPrompt string `json:"customSystemPrompt,omitempty"`
+	// CustomSystemPrompt (DISABLED: 会完全覆盖 cc-connect 系统提示，导致 cron/relay 指令丢失)
+	// CustomSystemPrompt string `json:"customSystemPrompt,omitempty"`
 	AppendSystemPrompt string `json:"appendSystemPrompt,omitempty"`
 
 	// ── Reasoning / thinking ───────────────────────────────
@@ -79,8 +80,8 @@ type sidecarConfig struct {
 	// ── Tool restrictions ──────────────────────────────────
 	AllowedTools    []string `json:"allowedTools,omitempty"`
 	DisallowedTools []string `json:"disallowedTools,omitempty"`
-	// Explicit tool set: []string or {"type":"preset","preset":"claude_code"}
-	Tools any `json:"tools,omitempty"`
+	// Explicit tool set (DISABLED: cc-connect 需要完整工具能力)
+	// Tools any `json:"tools,omitempty"`
 
 	// ── MCP servers ────────────────────────────────────────
 	MCPServers map[string]any `json:"mcpServers,omitempty"`
@@ -98,28 +99,28 @@ type sidecarConfig struct {
 	// ── Model ──────────────────────────────────────────────
 	FallbackModel string `json:"fallbackModel,omitempty"`
 
-	// ── Agent system ───────────────────────────────────────
+	// ── Agent system (DISABLED: cc-connect 不需要自定义子代理) ──
 	// Named agent to use (defined in agents or settings)
-	Agent string `json:"agent,omitempty"`
+	// Agent string `json:"agent,omitempty"`
 	// Programmatically defined subagents
-	Agents map[string]any `json:"agents,omitempty"`
+	// Agents map[string]any `json:"agents,omitempty"`
 
-	// ── Plugins ────────────────────────────────────────────
+	// ── Plugins (DISABLED: 无插件生态使用) ─────────────────────
 	// Plugins to load (e.g. [{type:"local",path:"./my-plugin"}])
-	Plugins []any `json:"plugins,omitempty"`
+	// Plugins []any `json:"plugins,omitempty"`
 
-	// ── Sandbox ────────────────────────────────────────────
+	// ── Sandbox (DISABLED: 容器/VM 环境下冗余) ────────────────
 	// Sandbox settings for command execution isolation
-	Sandbox map[string]any `json:"sandbox,omitempty"`
+	// Sandbox map[string]any `json:"sandbox,omitempty"`
 
-	// ── Other ──────────────────────────────────────────────
-	StrictMCPConfig      bool   `json:"strictMcpConfig,omitempty"`
-	IncludeHookEvents    bool   `json:"includeHookEvents,omitempty"`
-	EnableFileCheckpoint bool   `json:"enableFileCheckpointing,omitempty"`
-	Debug                bool   `json:"debug,omitempty"`
-	DebugFile            string `json:"debugFile,omitempty"`
+	// ── Other (DISABLED: 小众/桌面端特性) ────────────────────
+	// StrictMCPConfig      bool   `json:"strictMcpConfig,omitempty"`
+	// IncludeHookEvents    bool   `json:"includeHookEvents,omitempty"`
+	// EnableFileCheckpoint bool   `json:"enableFileCheckpointing,omitempty"`
+	// Debug                bool   `json:"debug,omitempty"`
+	// DebugFile            string `json:"debugFile,omitempty"`
 
-	// ── Session ────────────────────────────────────────────
+	// ── Session (DISABLED: cc-connect 通过 session ID 自行管理恢复) ──
 	// Continue the most recent conversation instead of starting new one.
-	Continue bool `json:"continue,omitempty"`
+	// Continue bool `json:"continue,omitempty"`
 }
