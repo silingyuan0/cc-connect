@@ -566,6 +566,10 @@ const (
 	MsgWsCloneFailed           MsgKey = "ws_clone_failed"
 	MsgWsInitDirNotFound       MsgKey = "ws_init_dir_not_found"
 	MsgWsInitInvalidTarget     MsgKey = "ws_init_invalid_target"
+
+	// Retry messages
+	MsgRetryAttempt MsgKey = "retry_attempt"
+	MsgRetryAppend  MsgKey = "retry_append"
 )
 
 var messages = map[MsgKey]map[Language]string{
@@ -3827,6 +3831,20 @@ var messages = map[MsgKey]map[Language]string{
 		LangTraditionalChinese: "請提供 git 倉庫地址（如 `https://github.com/org/repo`）或本地目錄路徑。",
 		LangJapanese:           "git URL（例: `https://github.com/org/repo`）またはローカルディレクトリパスを指定してください。",
 		LangSpanish:            "Proporcione una URL de git (ej. `https://github.com/org/repo`) o una ruta de directorio local.",
+	},
+	MsgRetryAttempt: {
+		LangEnglish:            "⚠️ API error occurred, retrying attempt %d...",
+		LangChinese:            "⚠️ API 出现异常，正在重试第%d次...",
+		LangTraditionalChinese: "⚠️ API 發生異常，正在重試第%d次...",
+		LangJapanese:           "⚠️ APIエラーが発生しました、%d回目のリトライ中...",
+		LangSpanish:            "⚠️ Error de API, reintentando intento %d...",
+	},
+	MsgRetryAppend: {
+		LangEnglish:            "\n\n[An exception occurred during the last execution, please continue the unfinished work. No need to repeat completed parts.]",
+		LangChinese:            "\n\n[刚才执行的时候发生了异常，请继续未完成的工作，已经完成的不用重复。]",
+		LangTraditionalChinese: "\n\n[剛才執行的時候發生了異常，請繼續未完成的工作，已經完成的不用重複。]",
+		LangJapanese:           "\n\n[直前の実行でエラーが発生しました。未完了の作業を続けてください。完了した部分は繰り返さなくて構いません。]",
+		LangSpanish:            "\n\n[Ocurrió una excepción durante la última ejecución. Continúe el trabajo inacabado. No repita las partes completadas.]",
 	},
 }
 

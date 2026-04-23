@@ -953,7 +953,7 @@ func TestProcessInteractiveEvents_SuppressesDuplicateSideChannelText(t *testing.
 	}
 
 	agentSession.events <- Event{Type: EventResult, Content: sideText, Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil, "")
 
 	if got := p.getSent(); len(got) != 1 || got[0] != sideText {
 		t.Fatalf("sent text = %#v, want one side-channel message", got)
@@ -983,7 +983,7 @@ func TestProcessInteractiveEvents_DoesNotSuppressDifferentFinalText(t *testing.T
 
 	finalText := "文件已发出，另外我也把使用方法整理好了。"
 	agentSession.events <- Event{Type: EventResult, Content: finalText, Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil, "")
 
 	if got := p.getSent(); len(got) != 2 || got[0] == got[1] {
 		t.Fatalf("sent text = %#v, want side-channel and final reply", got)
@@ -1029,7 +1029,7 @@ func TestProcessInteractiveEvents_AppendsReplyFooterWhenEnabled(t *testing.T) {
 	e.interactiveStates[sessionKey] = state
 
 	agentSession.events <- Event{Type: EventResult, Content: "answer", Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1077,7 +1077,7 @@ func TestProcessInteractiveEvents_DoesNotAppendReplyFooterWhenDisabled(t *testin
 	e.interactiveStates[sessionKey] = state
 
 	agentSession.events <- Event{Type: EventResult, Content: "answer", Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-off", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-off", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1144,7 +1144,7 @@ func TestProcessInteractiveEvents_ReplyFooterPrefersSessionRuntimeState(t *testi
 	e.interactiveStates[sessionKey] = state
 
 	agentSession.events <- Event{Type: EventResult, Content: "answer", Done: true}
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-runtime", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-footer-runtime", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1175,7 +1175,7 @@ func TestProcessInteractiveEvents_HiddenToolProgressKeepsPreviewOnFinalize(t *te
 	agentSession.events <- Event{Type: EventToolUse, ToolName: "Bash", ToolInput: "echo hi"}
 	agentSession.events <- Event{Type: EventResult, Content: "", Done: true}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil, "")
 
 	if got := p.getSent(); len(got) != 0 {
 		t.Fatalf("sent text = %#v, want no plain-text fallback sends", got)
@@ -1214,7 +1214,7 @@ func TestProcessInteractiveEvents_ToolMessagesDisabledSuppressesToolProgressOnly
 	agentSession.events <- Event{Type: EventText, Content: "done"}
 	agentSession.events <- Event{Type: EventResult, Content: "done", Done: true}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, nil, "")
 
 	sent := p.getSent()
 	if len(sent) < 1 || len(sent) > 2 {
@@ -1251,7 +1251,7 @@ func TestProcessInteractiveEvents_CompactProgressCoalescesThinkingAndToolUse(t *
 	agentSession.events <- Event{Type: EventText, Content: "done"}
 	agentSession.events <- Event{Type: EventResult, Content: "done", Done: true}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m1", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 || sent[0] != "done" {
@@ -1296,7 +1296,7 @@ func TestProcessInteractiveEvents_CardProgressUsesCardTemplate(t *testing.T) {
 	agentSession.events <- Event{Type: EventText, Content: "done"}
 	agentSession.events <- Event{Type: EventResult, Content: "done", Done: true}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m2", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m2", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 || sent[0] != "done" {
@@ -1355,7 +1355,7 @@ func TestProcessInteractiveEvents_FinalReplyUsesWorkspaceForReferenceRendering(t
 		Done:    true,
 	}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-relative", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-relative", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1396,7 +1396,7 @@ func TestProcessInteractiveEvents_FinalReplyRemainsRawWhenReferencesDisabled(t *
 		Done:    true,
 	}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-relative-raw", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m-relative-raw", time.Now(), nil, nil, state.replyCtx, "")
 
 	sent := p.getSent()
 	if len(sent) != 1 {
@@ -1429,7 +1429,7 @@ func TestProcessInteractiveEvents_CardProgressUsesStructuredPayloadWhenSupported
 	agentSession.events <- Event{Type: EventText, Content: "done"}
 	agentSession.events <- Event{Type: EventResult, Content: "done", Done: true}
 
-	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m3", time.Now(), nil, nil, state.replyCtx)
+	e.processInteractiveEvents(state, session, e.sessions, sessionKey, "m3", time.Now(), nil, nil, state.replyCtx, "")
 
 	starts := p.getPreviewStarts()
 	if len(starts) != 1 {
@@ -6020,7 +6020,7 @@ func TestProcessInteractiveEvents_PermissionWhileSendBlocked(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		e.processInteractiveEvents(state, session, e.sessions, key, "m1", time.Now(), nil, sendDone, nil)
+		e.processInteractiveEvents(state, session, e.sessions, key, "m1", time.Now(), nil, sendDone, nil, "")
 		close(done)
 	}()
 
@@ -6300,7 +6300,7 @@ func TestProcessInteractiveEvents_DrainsQueuedMessages(t *testing.T) {
 	// processInteractiveEvents should handle both turns.
 	done := make(chan struct{})
 	go func() {
-		e.processInteractiveEvents(state, session, e.sessions, key, "msg1", time.Now(), nil, sendDone, nil)
+		e.processInteractiveEvents(state, session, e.sessions, key, "msg1", time.Now(), nil, sendDone, nil, "")
 		close(done)
 	}()
 
@@ -6790,7 +6790,7 @@ func TestAutoCompress_TriggerAfterResult(t *testing.T) {
 	session.AddHistory("user", "hello world")
 
 	// Simulate a full turn.
-	go e.processInteractiveEvents(state, session, e.sessions, key, "msg1", time.Now(), func() {}, nil, nil)
+	go e.processInteractiveEvents(state, session, e.sessions, key, "msg1", time.Now(), func() {}, nil, nil, "")
 
 	sess.events <- Event{Type: EventResult, Content: "response", Done: true}
 
@@ -7210,7 +7210,7 @@ func TestCmdStop_ReturnsWhileCloseBlockedAndStopsEventLoop(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		e.processInteractiveEvents(state, session, e.sessions, key, "msg-1", time.Now(), nil, nil, "ctx")
+		e.processInteractiveEvents(state, session, e.sessions, key, "msg-1", time.Now(), nil, nil, "ctx", "")
 		close(done)
 	}()
 
@@ -7530,7 +7530,7 @@ func TestEventIdleTimeout_CleansUpSession(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		e.processInteractiveEvents(state, session, e.sessions, key, "", time.Now(), nil, nil, nil)
+		e.processInteractiveEvents(state, session, e.sessions, key, "", time.Now(), nil, nil, nil, "")
 		close(done)
 	}()
 
@@ -7574,7 +7574,7 @@ func TestEventIdleTimeout_ResetOnEvent(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		e.processInteractiveEvents(state, session, e.sessions, key, "", time.Now(), nil, nil, nil)
+		e.processInteractiveEvents(state, session, e.sessions, key, "", time.Now(), nil, nil, nil, "")
 		close(done)
 	}()
 
@@ -7626,7 +7626,7 @@ func TestEventIdleTimeout_DisabledWhenZero(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		e.processInteractiveEvents(state, session, e.sessions, key, "", time.Now(), nil, nil, nil)
+		e.processInteractiveEvents(state, session, e.sessions, key, "", time.Now(), nil, nil, nil, "")
 		close(done)
 	}()
 

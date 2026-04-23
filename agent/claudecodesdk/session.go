@@ -241,6 +241,29 @@ func (s *sdkSession) Send(prompt string, images []core.ImageAttachment, files []
 	return s.writeJSON(sidecarCommand{Type: "send", Content: prompt})
 }
 
+// IsRetryableError implements core.RetryableErrorChecker.
+// It detects transient Claude API errors that are worth retrying.
+func (s *sdkSession) IsRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	// Match API Error 400 with specific error codes from the Claude API proxy.
+	// Example: API Error: 400 {"type":"error","error":{"message":"网络错误...","code":"1234"},...}
+	if strings.Contains(msg, "API Error: 400") {
+		return true
+	}
+	// Match specific error codes that indicate transient failures.
+	if strings.Contains(msg, `"code":"1234"`) {
+		return true
+	}
+	// Match network error messages from various proxies.
+	if strings.Contains(msg, "网络错误") {
+		return true
+	}
+	return false
+}
+
 // RespondPermission writes a permission response to the sidecar stdin.
 func (s *sdkSession) RespondPermission(requestID string, result core.PermissionResult) error {
 	if !s.alive.Load() {

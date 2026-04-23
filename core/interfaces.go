@@ -451,6 +451,14 @@ type LiveModeSwitcher interface {
 	SetLiveMode(mode string) bool
 }
 
+// RetryableErrorChecker is an optional interface for agent sessions that can
+// classify whether an error is transient and worth retrying. The engine checks
+// this in the EventError handler and automatically re-sends the prompt with
+// exponential backoff when the error is retryable.
+type RetryableErrorChecker interface {
+	IsRetryableError(err error) bool
+}
+
 // PermissionModeInfo describes a permission mode for display.
 type PermissionModeInfo struct {
 	Key    string

@@ -2162,7 +2162,7 @@ func (e *Engine) processInteractiveMessageWith(p Platform, msg *Message, session
 		sendDone <- state.agentSession.Send(promptContent, msg.Images, msg.Files)
 	}()
 
-	e.processInteractiveEvents(state, session, sessions, interactiveKey, msg.MessageID, turnStart, stopTyping, sendDone, msg.ReplyCtx)
+	e.processInteractiveEvents(state, session, sessions, interactiveKey, msg.MessageID, turnStart, stopTyping, sendDone, msg.ReplyCtx, promptContent)
 	if elapsed := time.Since(sendStart); elapsed >= slowAgentSend {
 		slog.Warn("slow agent send", "elapsed", elapsed, "session", msg.SessionKey, "content_len", len(msg.Content))
 	}
@@ -2559,7 +2559,12 @@ func (e *Engine) closeAgentSessionWithTimeout(sessionKey string, agentSession Ag
 
 const defaultEventIdleTimeout = 2 * time.Hour
 
-func (e *Engine) processInteractiveEvents(state *interactiveState, session *Session, sessions *SessionManager, sessionKey string, msgID string, turnStart time.Time, stopTypingFn func(), sendDone <-chan error, replyCtx any) {
+const (
+	maxAutoRetries      = 5
+	retryBaseDelay      = 5 * time.Second
+)
+
+func (e *Engine) processInteractiveEvents(state *interactiveState, session *Session, sessions *SessionManager, sessionKey string, msgID string, turnStart time.Time, stopTypingFn func(), sendDone <-chan error, replyCtx any, promptContent string) {
 	var textParts []string
 	var segmentStart int // index into textParts: text before this has been sent/displayed
 	toolCount := 0
@@ -2567,6 +2572,7 @@ func (e *Engine) processInteractiveEvents(state *interactiveState, session *Sess
 	firstEventLogged := false
 	triggerAutoCompress := false
 	pendingSend := sendDone
+	retryCount := 0
 
 	// stopTyping tracks the current turn's typing indicator so it can be
 	// stopped when a queued message starts a new turn.
@@ -3192,6 +3198,50 @@ func (e *Engine) processInteractiveEvents(state *interactiveState, session *Sess
 			sp.discard()
 			if event.Error != nil {
 				slog.Error("agent error", "error", event.Error)
+
+				// Check if the error is retryable and we haven't exhausted retries.
+				// Only retry if the agent session is still alive (sidecar process didn't crash).
+				if checker, ok := state.agentSession.(RetryableErrorChecker); ok &&
+					checker.IsRetryableError(event.Error) &&
+					retryCount < maxAutoRetries &&
+					state.agentSession != nil && state.agentSession.Alive() {
+
+					retryCount++
+					delay := time.Duration(retryCount) * retryBaseDelay
+					slog.Warn("retryable agent error, will retry",
+						"error", event.Error,
+						"attempt", retryCount,
+						"max_retries", maxAutoRetries,
+						"delay", delay,
+						"session_key", sessionKey,
+					)
+
+					// Notify user about retry
+					e.send(p, replyCtx, e.i18n.Tf(MsgRetryAttempt, retryCount))
+
+					// Wait with backoff, respecting context cancellation
+					select {
+					case <-time.After(delay):
+					case <-e.ctx.Done():
+						return
+					}
+
+					// Drain stale events from the channel
+					drainEvents(events)
+
+					// Build retry prompt: append hint on first retry only
+					retryPrompt := promptContent
+					if retryCount == 1 {
+						retryPrompt += e.i18n.T(MsgRetryAppend)
+					}
+
+					// Re-send the prompt
+					go func() {
+						_ = state.agentSession.Send(retryPrompt, nil, nil)
+					}()
+					continue
+				}
+
 				e.hooks.Emit(HookEvent{
 					Event:      HookEventError,
 					SessionKey: sessionKey,
@@ -3312,7 +3362,7 @@ func (e *Engine) drainPendingMessages(state *interactiveState, session *Session,
 		}
 
 		slog.Info("processing queued message", "session", sessionKey)
-		e.processInteractiveEvents(state, session, sessions, sessionKey, "", time.Now(), stopTyping, sendDone, queued.replyCtx)
+		e.processInteractiveEvents(state, session, sessions, sessionKey, "", time.Now(), stopTyping, sendDone, queued.replyCtx, prompt)
 	}
 }
 
