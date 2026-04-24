@@ -161,22 +161,17 @@ func TestStartSession_ProviderEnvInjected(t *testing.T) {
 		sessionEnv: []string{
 			"CC_PROJECT=test",
 		},
-		agentEnv: []string{
-			"AGENT_EXTRA=1",
-		},
 	}
 
 	a.mu.RLock()
 	providerEnv := a.providerEnvLocked()
 	sessionEnv := a.sessionEnv
-	agentEnv := a.agentEnv
 	a.mu.RUnlock()
 
 	// Simulate the env assembly that happens in StartSession
 	var extraEnv []string
 	extraEnv = append(extraEnv, providerEnv...)
 	extraEnv = append(extraEnv, sessionEnv...)
-	extraEnv = append(extraEnv, agentEnv...)
 
 	envMap := envSliceToMap(extraEnv)
 
@@ -194,9 +189,6 @@ func TestStartSession_ProviderEnvInjected(t *testing.T) {
 	}
 	if got := envMap["CC_PROJECT"]; got != "test" {
 		t.Errorf("CC_PROJECT = %q, want test", got)
-	}
-	if got := envMap["AGENT_EXTRA"]; got != "1" {
-		t.Errorf("AGENT_EXTRA = %q, want 1", got)
 	}
 }
 

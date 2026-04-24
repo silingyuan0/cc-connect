@@ -36,7 +36,6 @@ type Agent struct {
 	providers            []core.ProviderConfig
 	activeIdx            int
 	sessionEnv           []string
-	agentEnv             []string // env vars from config [projects.agent.options.env]
 	modelCachePath       string
 	persistentModelCache *opencodePersistentModelCache
 	refreshingModelCache bool
@@ -88,7 +87,6 @@ func New(opts map[string]any) (core.Agent, error) {
 		mode:                 mode,
 		cmd:                  cmd,
 		activeIdx:            -1,
-		agentEnv:             core.AgentEnvFromOpts(opts),
 		modelCachePath:       modelCachePath,
 		persistentModelCache: persistentModelCache,
 	}, nil
@@ -463,7 +461,6 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	workDir := a.workDir
 	extraEnv := a.providerEnvLocked()
 	extraEnv = append(extraEnv, a.sessionEnv...)
-	extraEnv = append(extraEnv, a.agentEnv...)
 	if a.activeIdx >= 0 && a.activeIdx < len(a.providers) {
 		if m := a.providers[a.activeIdx].Model; m != "" {
 			model = m

@@ -31,7 +31,6 @@ type Agent struct {
 	providers      []core.ProviderConfig
 	activeIdx      int
 	sessionEnv     []string
-	agentEnv       []string
 	allowedTools   []string
 	platformPrompt string
 	reasoningEffort string
@@ -201,7 +200,6 @@ func New(opts map[string]any) (core.Agent, error) {
 		sidecarDir:   sidecarDir,
 		claudePath:   claudePath,
 		activeIdx:    -1,
-		agentEnv:     core.AgentEnvFromOpts(opts),
 		allowedTools: allowedTools,
 		config:       config,
 	}, nil
@@ -431,7 +429,6 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	claudePath := a.claudePath
 	sidecarDir := a.sidecarDir
 	sessionEnv := a.sessionEnv
-	agentEnv := a.agentEnv
 	config := a.config
 	providerEnv := a.providerEnvLocked()
 	platformPrompt := a.platformPrompt
@@ -469,7 +466,6 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	var extraEnv []string
 	extraEnv = append(extraEnv, providerEnv...)
 	extraEnv = append(extraEnv, sessionEnv...)
-	extraEnv = append(extraEnv, agentEnv...)
 
 	// Serialize sidecar config as JSON for the env var
 	if configJSON, err := json.Marshal(config); err == nil && len(configJSON) > 2 {

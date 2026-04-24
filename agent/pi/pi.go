@@ -28,7 +28,6 @@ type Agent struct {
 	mode       string // "default" | "yolo"
 	thinking   string // reasoning effort: off, minimal, low, medium, high, xhigh
 	sessionEnv []string
-	agentEnv   []string // env vars from config [projects.agent.options.env]
 	mu         sync.Mutex
 }
 
@@ -51,11 +50,10 @@ func New(opts map[string]any) (core.Agent, error) {
 	}
 
 	return &Agent{
-		cmd:      cmd,
-		workDir:  workDir,
-		model:    model,
-		mode:     mode,
-		agentEnv: core.AgentEnvFromOpts(opts),
+		cmd:     cmd,
+		workDir: workDir,
+		model:   model,
+		mode:    mode,
 	}, nil
 }
 
@@ -101,7 +99,6 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	model := a.model
 	thinking := a.thinking
 	extraEnv := append([]string{}, a.sessionEnv...)
-	extraEnv = append(extraEnv, a.agentEnv...)
 	a.mu.Unlock()
 	return newPiSession(ctx, a.cmd, a.workDir, model, mode, thinking, sessionID, extraEnv)
 }

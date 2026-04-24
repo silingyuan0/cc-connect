@@ -81,7 +81,7 @@ func New(opts map[string]any) (core.Agent, error) {
 	}
 
 	args := parseStringSlice(opts["args"])
-	extra := core.AgentEnvFromOpts(opts)
+	extra := envPairsFromOpts(opts)
 	authMethod, _ := opts["auth_method"].(string)
 	authMethod = strings.TrimSpace(authMethod)
 	displayName, _ := opts["display_name"].(string)
@@ -101,6 +101,29 @@ func New(opts map[string]any) (core.Agent, error) {
 		displayName: displayName,
 		mode:        mode,
 	}, nil
+}
+
+func envPairsFromOpts(opts map[string]any) []string {
+	raw, ok := opts["env"]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch m := raw.(type) {
+	case map[string]string:
+		var out []string
+		for k, v := range m {
+			out = append(out, k+"="+v)
+		}
+		return out
+	case map[string]any:
+		var out []string
+		for k, v := range m {
+			out = append(out, fmt.Sprintf("%s=%v", k, v))
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func parseStringSlice(v any) []string {
