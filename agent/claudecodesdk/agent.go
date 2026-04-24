@@ -22,19 +22,21 @@ func init() {
 
 // Agent implements core.Agent using a Node.js sidecar with claude-agent-sdk.
 type Agent struct {
-	workDir      string
-	model        string
-	mode         string
-	nodePath     string
-	sidecarDir   string
-	claudePath   string
-	providers    []core.ProviderConfig
-	activeIdx    int
-	sessionEnv   []string
-	agentEnv     []string
-	allowedTools []string
-	config       sidecarConfig // SDK query options
-	mu           sync.RWMutex
+	workDir        string
+	model          string
+	mode           string
+	nodePath       string
+	sidecarDir     string
+	claudePath     string
+	providers      []core.ProviderConfig
+	activeIdx      int
+	sessionEnv     []string
+	agentEnv       []string
+	allowedTools   []string
+	platformPrompt string
+	reasoningEffort string
+	config         sidecarConfig // SDK query options
+	mu             sync.RWMutex
 }
 
 func New(opts map[string]any) (core.Agent, error) {
@@ -301,6 +303,78 @@ func (a *Agent) PermissionModes() []core.PermissionModeInfo {
 // HasSystemPromptSupport implements core.SystemPromptSupporter.
 func (a *Agent) HasSystemPromptSupport() bool { return true }
 
+// SetPlatformPrompt implements core.PlatformPromptInjector.
+func (a *Agent) SetPlatformPrompt(prompt string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.platformPrompt = prompt
+}
+
+// SetReasoningEffort implements core.ReasoningEffortSwitcher.
+func (a *Agent) SetReasoningEffort(effort string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.reasoningEffort = normalizeEffort(effort)
+	slog.Info("claudecodesdk: reasoning effort changed", "effort", a.reasoningEffort)
+}
+
+// GetReasoningEffort implements core.ReasoningEffortSwitcher.
+func (a *Agent) GetReasoningEffort() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.reasoningEffort
+}
+
+// AvailableReasoningEfforts implements core.ReasoningEffortSwitcher.
+func (a *Agent) AvailableReasoningEfforts() []string {
+	return []string{"low", "medium", "high", "max"}
+}
+
+// AddAllowedTools implements core.ToolAuthorizer.
+func (a *Agent) AddAllowedTools(tools ...string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	existing := make(map[string]bool)
+	for _, t := range a.allowedTools {
+		existing[t] = true
+	}
+	for _, tool := range tools {
+		if !existing[tool] {
+			a.allowedTools = append(a.allowedTools, tool)
+			existing[tool] = true
+		}
+	}
+	slog.Info("claudecodesdk: updated allowed tools", "tools", tools, "total", len(a.allowedTools))
+	return nil
+}
+
+// GetAllowedTools implements core.ToolAuthorizer.
+func (a *Agent) GetAllowedTools() []string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	result := make([]string, len(a.allowedTools))
+	copy(result, a.allowedTools)
+	return result
+}
+
+// normalizeEffort maps user-friendly aliases to Claude SDK effort values.
+func normalizeEffort(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "":
+		return ""
+	case "low":
+		return "low"
+	case "medium", "med":
+		return "medium"
+	case "high":
+		return "high"
+	case "max":
+		return "max"
+	default:
+		return ""
+	}
+}
+
 // providerEnvLocked returns env vars for the active provider. Caller must hold mu.
 //
 // When a custom base_url is configured, we use ANTHROPIC_AUTH_TOKEN (Bearer)
@@ -351,6 +425,8 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	agentEnv := a.agentEnv
 	config := a.config
 	providerEnv := a.providerEnvLocked()
+	platformPrompt := a.platformPrompt
+	reasoningEffort := a.reasoningEffort
 	a.mu.RUnlock()
 
 	// Resolve sidecar path: embedded > sidecar_dir > binary-relative
@@ -364,6 +440,16 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 		model = activeProv.Model
 	}
 
+	// Inject platform formatting instructions into system prompt.
+	if platformPrompt != "" {
+		config.AppendSystemPrompt += "\n## Formatting\n" + platformPrompt + "\n"
+	}
+
+	// Apply current reasoning effort (may have changed at runtime).
+	if reasoningEffort != "" {
+		config.Effort = reasoningEffort
+	}
+
 	var extraEnv []string
 	extraEnv = append(extraEnv, providerEnv...)
 	extraEnv = append(extraEnv, sessionEnv...)
@@ -375,11 +461,6 @@ func (a *Agent) StartSession(ctx context.Context, sessionID string) (core.AgentS
 	}
 
 	return newSDKSession(ctx, a.nodePath, sidecarPath, workDir, model, mode, sessionID, claudePath, extraEnv)
-}
-
-func (a *Agent) ListSessions(ctx context.Context) ([]core.AgentSessionInfo, error) {
-	// SDK-managed sessions: not yet implemented
-	return nil, nil
 }
 
 func (a *Agent) Stop() error { return nil }

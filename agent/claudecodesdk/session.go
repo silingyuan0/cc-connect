@@ -2,6 +2,7 @@ package claudecodesdk
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -74,7 +75,8 @@ func newSDKSession(
 		return nil, fmt.Errorf("claudecodesdk: stdout pipe: %w", err)
 	}
 
-	cmd.Stderr = os.Stderr
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
 
 	if err := cmd.Start(); err != nil {
 		cancel()
@@ -93,16 +95,35 @@ func newSDKSession(
 	s.sessionID.Store(resume)
 	s.alive.Store(true)
 
-	go s.readLoop(stdout)
+	go s.readLoop(stdout, &stderrBuf)
 
 	return s, nil
 }
 
-func (s *sdkSession) readLoop(stdout io.ReadCloser) {
-	defer func() {
-		s.alive.Store(false)
-		close(s.events)
-		close(s.done)
+func (s *sdkSession) readLoop(stdout io.ReadCloser, stderrBuf *bytes.Buffer) {
+	// Run cmd.Wait() in parallel so we can detect process crashes.
+	waitErrCh := make(chan error, 1)
+	waitDone := make(chan struct{})
+	go func() {
+		waitErrCh <- s.cmd.Wait()
+		close(waitDone)
+	}()
+
+	// Close stdout when the process exits (with a short grace period for
+	// the pipe buffer to drain), or when the session is cancelled.
+	go func() {
+		select {
+		case <-s.ctx.Done():
+			_ = stdout.Close()
+			return
+		case <-waitDone:
+		}
+		select {
+		case <-s.done:
+			return
+		case <-time.After(50 * time.Millisecond):
+		}
+		_ = stdout.Close()
 	}()
 
 	scanner := bufio.NewScanner(stdout)
@@ -135,6 +156,24 @@ func (s *sdkSession) readLoop(stdout io.ReadCloser) {
 	if err := scanner.Err(); err != nil {
 		slog.Error("claudecodesdk: scanner error", "error", err)
 	}
+
+	// Wait for cmd.Wait() to return, then check for crash errors.
+	waitErr := <-waitErrCh
+	s.alive.Store(false)
+
+	if waitErr != nil {
+		stderrMsg := strings.TrimSpace(stderrBuf.String())
+		if stderrMsg != "" {
+			slog.Error("claudecodesdk: process failed", "error", waitErr, "stderr", stderrMsg)
+			select {
+			case s.events <- core.Event{Type: core.EventError, Error: fmt.Errorf("%s", stderrMsg)}:
+			case <-s.ctx.Done():
+			}
+		}
+	}
+
+	close(s.events)
+	close(s.done)
 }
 
 func (s *sdkSession) mapEvent(evt *sidecarEvent) *core.Event {
@@ -152,6 +191,11 @@ func (s *sdkSession) mapEvent(evt *sidecarEvent) *core.Event {
 		return &core.Event{Type: core.EventThinking, Content: evt.Content}
 
 	case "tool_use":
+		// AskUserQuestion is surfaced via permission_request with structured
+		// questions; skip the duplicate tool_use event to avoid double display.
+		if evt.ToolName == "AskUserQuestion" {
+			return nil
+		}
 		inputJSON, _ := json.Marshal(evt.Input)
 		inputStr := string(inputJSON)
 		if len(inputStr) > 200 {
